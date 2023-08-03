@@ -28,7 +28,9 @@ export const AddressInputController = () => {
   const setStartedFirstMessage = useXmtpStore(
     (state) => state.setStartedFirstMessage,
   );
-  const setConversationId = useXmtpStore((state) => state.setConversationId);
+  const setConversationTopic = useXmtpStore(
+    (state) => state.setConversationTopic,
+  );
   const setRecipientInputMode = useXmtpStore(
     (state) => state.setRecipientInputMode,
   );
@@ -98,7 +100,7 @@ export const AddressInputController = () => {
         setRecipientEnteredValue("");
         setRecipientWalletAddress("");
         setStartedFirstMessage(false);
-        setConversationId("");
+        setConversationTopic("");
         setRecipientInputMode(RecipientInputMode.InvalidEntry);
         setUnsName(null);
       }}

@@ -1,26 +1,16 @@
 import { useEnsName } from "wagmi";
+import type { CachedMessage } from "@xmtp/react-sdk";
 import { useClient } from "@xmtp/react-sdk";
 import { FullMessage } from "../component-library/components/FullMessage/FullMessage";
 import { isValidLongWalletAddress, shortAddress } from "../helpers";
 import type { address } from "../pages/inbox";
 import MessageContentController from "./MessageContentController";
-import useSendMessage from "../hooks/useSendMessage";
-import { useXmtpStore } from "../store/xmtp";
 
 interface FullMessageControllerProps {
-  msg: {
-    id: string;
-    senderAddress: string;
-    content: string;
-    sent: Date;
-  };
-  idx: number;
+  msg: CachedMessage;
 }
 
-export const FullMessageController = ({
-  msg,
-  idx,
-}: FullMessageControllerProps) => {
+export const FullMessageController = ({ msg }: FullMessageControllerProps) => {
   const { client } = useClient();
 
   // Get ENS if exists from full address
@@ -28,27 +18,25 @@ export const FullMessageController = ({
     address: msg.senderAddress as address,
     enabled: isValidLongWalletAddress(msg.senderAddress),
   });
-  const conversationId = useXmtpStore((state) => state.conversationId);
-
-  const { loading, error } = useSendMessage(conversationId as address);
 
   return (
     <FullMessage
       text={
         <MessageContentController
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           content={msg.content}
           isSelf={client?.address === msg.senderAddress}
-          isLoading={loading}
-          isError={!!error}
+          isLoading={msg.isSending}
+          isError={!!msg.hasSendError}
         />
       }
-      isError={!!error}
-      key={`${msg.id}_${idx}`}
+      isError={!!msg.hasSendError}
+      key={msg.xmtpID}
       from={{
         displayAddress: ensName ?? shortAddress(msg.senderAddress),
         isSelf: client?.address === msg.senderAddress,
       }}
-      datetime={msg.sent}
+      datetime={msg.sentAt}
     />
   );
 };

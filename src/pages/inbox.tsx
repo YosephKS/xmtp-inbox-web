@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useClient } from "@xmtp/react-sdk";
+import { useClient, useConversations } from "@xmtp/react-sdk";
 import { useDisconnect, useSigner } from "wagmi";
 import type { Attachment } from "@xmtp/content-type-remote-attachment";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,7 @@ import useWindowSize from "../hooks/useWindowSize";
 import { ConversationListController } from "../controllers/ConversationListController";
 import { useAttachmentChange } from "../hooks/useAttachmentChange";
 import { db } from "../helpers/attachment_db";
+import useSelectedConversation from "../hooks/useSelectedConversation";
 
 export type address = `0x${string}`;
 
@@ -24,6 +25,8 @@ const Inbox: React.FC<{ children?: React.ReactNode }> = () => {
   const resetXmtpState = useXmtpStore((state) => state.resetXmtpState);
   const { client, disconnect, signer: clientSigner } = useClient();
   const [isDragActive, setIsDragActive] = useState(false);
+  const { conversations } = useConversations();
+  const selectedConversation = useSelectedConversation();
 
   useEffect(() => {
     if (!client) {
@@ -37,9 +40,6 @@ const Inbox: React.FC<{ children?: React.ReactNode }> = () => {
   }, [client]);
 
   const { data: signer } = useSigner();
-  // XMTP Store
-  const conversations = useXmtpStore((state) => state.conversations);
-  const conversationId = useXmtpStore((state) => state.conversationId);
 
   const recipientWalletAddress = useXmtpStore(
     (state) => state.recipientWalletAddress,
@@ -133,7 +133,7 @@ const Inbox: React.FC<{ children?: React.ReactNode }> = () => {
         recipientWalletAddress ||
         startedFirstMessage ? (
           <div className="flex w-full flex-col h-screen overflow-hidden">
-            {!conversations.size &&
+            {!conversations.length &&
             !loadingConversations &&
             !startedFirstMessage ? (
               <LearnMore
@@ -146,7 +146,11 @@ const Inbox: React.FC<{ children?: React.ReactNode }> = () => {
                   <AddressInputController />
                 </div>
                 <div className="h-full overflow-auto flex flex-col">
-                  {conversationId && <FullConversationController />}
+                  {selectedConversation && (
+                    <FullConversationController
+                      conversation={selectedConversation}
+                    />
+                  )}
                 </div>
                 {/* Drag event handling needing for content attachments */}
                 <MessageInputController

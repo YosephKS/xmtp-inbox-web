@@ -1,4 +1,4 @@
-import type { Conversation } from "@xmtp/react-sdk";
+import { useLastMessage, type CachedConversation } from "@xmtp/react-sdk";
 import { useEffect, useState } from "react";
 import { useEnsAvatar, useEnsName } from "wagmi";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,6 @@ import { MessagePreviewCard } from "../component-library/components/MessagePrevi
 import {
   XMTP_FEEDBACK_ADDRESS,
   fetchUnsName,
-  getConversationId,
   isValidLongWalletAddress,
   shortAddress,
 } from "../helpers";
@@ -15,14 +14,15 @@ import { useXmtpStore } from "../store/xmtp";
 import MessageContentController from "./MessageContentController";
 
 interface MessagePreviewCardControllerProps {
-  convo?: Conversation;
+  convo: CachedConversation;
 }
+
 export const MessagePreviewCardController = ({
   convo,
 }: MessagePreviewCardControllerProps) => {
   const { t } = useTranslation();
+  const lastMessage = useLastMessage(convo);
   // XMTP State
-  const previewMessages = useXmtpStore((state) => state.previewMessages);
   const recipientWalletAddress = useXmtpStore(
     (state) => state.recipientWalletAddress,
   );
@@ -30,10 +30,11 @@ export const MessagePreviewCardController = ({
   const setRecipientWalletAddress = useXmtpStore(
     (state) => state.setRecipientWalletAddress,
   );
-  const conversationId = useXmtpStore((state) => state.conversationId);
+  const conversationTopic = useXmtpStore((state) => state.conversationTopic);
 
-  const setConversationId = useXmtpStore((state) => state.setConversationId);
-  const previewMessage = previewMessages.get(getConversationId(convo));
+  const setConversationTopic = useXmtpStore(
+    (state) => state.setConversationTopic,
+  );
 
   // Get ENS name and avatar from Wagmi
   const { data: previewEnsName } = useEnsName({
@@ -60,31 +61,37 @@ export const MessagePreviewCardController = ({
   }, [convo?.peerAddress]);
 
   // Helpers
-  const isSelected = conversationId === getConversationId(convo);
+  const isSelected = conversationTopic === convo.topic;
 
-  const onConvoClick = (conversation: Conversation) => {
+  const onConvoClick = (conversation: CachedConversation) => {
     if (recipientWalletAddress !== conversation.peerAddress) {
       setRecipientWalletAddress(conversation.peerAddress);
     }
-    if (conversationId !== getConversationId(conversation)) {
-      setConversationId(getConversationId(conversation));
+    if (conversationTopic !== conversation.topic) {
+      setConversationTopic(conversation.topic);
     }
   };
 
   const conversationDomain = convo?.context?.conversationId.split("/")[0] ?? "";
 
+  let content = lastMessage?.content
+    ? typeof lastMessage.content !== "string"
+      ? t("messages.attachment") || "Attachment"
+      : lastMessage?.content
+    : undefined;
+
+  if (convo.peerAddress === XMTP_FEEDBACK_ADDRESS) {
+    content = "Send feedback";
+  }
+
   return (
     <MessagePreviewCard
       isSelected={isSelected}
-      key={previewMessage?.id}
+      key={lastMessage?.xmtpID}
       text={
-        previewMessage?.content ? (
+        content ? (
           <MessageContentController
-            content={
-              typeof previewMessage.content !== "string"
-                ? t("messages.attachment") || "Attachment"
-                : previewMessage?.content
-            }
+            content={content}
             // None of these props are needed for this preview view.
             // If there is an error or loading of attachment, the message preview still has the same view.
             isSelf={false}
@@ -93,7 +100,7 @@ export const MessagePreviewCardController = ({
           />
         ) : undefined
       }
-      datetime={previewMessage?.sent}
+      datetime={convo?.updatedAt}
       displayAddress={
         previewEnsName ||
         previewUnsName ||

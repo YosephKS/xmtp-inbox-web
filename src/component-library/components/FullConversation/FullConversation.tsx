@@ -17,7 +17,7 @@ export const FullConversation = ({
   // messages from the network
   if (isLoading && messages.length === 0) {
     return (
-      <div className="h-full flex flex-col-reverse justify-start p-4">
+      <div className="h-full flex flex-col justify-start p-4">
         {Array.from({ length: 3 }).map((_, idx) => (
           <MessageSkeletonLoader key={idx} incoming={false} />
         ))}
@@ -28,13 +28,13 @@ export const FullConversation = ({
   return (
     <div
       data-testid="message-tile-container"
-      className="w-full h-full flex flex-col-reverse pt-8 px-4 md:px-8">
-      {messages}
+      className="w-full h-full flex flex-col pt-8 px-4 md:px-8">
       <div
         className="text-gray-500 font-regular text-sm w-full py-2 text-center"
         data-testid="message-beginning-text">
         {t("messages.conversation_start")}
       </div>
+      {messages}
     </div>
   );
 };

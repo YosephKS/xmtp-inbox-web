@@ -1,5 +1,11 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { Attachment } from "@xmtp/content-type-remote-attachment";
 import {
   ArrowUpIcon,
@@ -12,6 +18,7 @@ import {
 } from "@heroicons/react/outline";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "react-tooltip";
+import type { CachedConversation, useStartConversation } from "@xmtp/react-sdk";
 import { IconButton } from "../IconButton/IconButton";
 import { useAttachmentChange } from "../../../hooks/useAttachmentChange";
 import { typeLookup, type contentTypes } from "../../../helpers/attachments";
@@ -21,14 +28,19 @@ import { useVoiceRecording } from "../../../hooks/useVoiceRecording";
 import { useRecordingTimer } from "../../../hooks/useRecordingTimer";
 import "react-tooltip/dist/react-tooltip.css";
 
-interface InputProps {
+type InputProps = {
   /**
    * What happens on a submit?
    */
-  onSubmit?: (
+  sendMessage: (
+    conversation: CachedConversation,
     msg: string | Attachment,
     type: "attachment" | "text",
   ) => Promise<void>;
+  startConversation: ReturnType<
+    typeof useStartConversation
+  >["startConversation"];
+  peerAddress: string;
   /**
    * Is the CTA button disabled?
    */
@@ -36,7 +48,7 @@ interface InputProps {
   /**
    * Rerender component?
    */
-  conversationId?: string;
+  conversation?: CachedConversation;
   /**
    * Content attachment
    */
@@ -57,12 +69,14 @@ interface InputProps {
    * Function to set whether content is being dragged over the draggable area, including the message input
    */
   setIsDragActive: (status: boolean) => void;
-}
+};
 
 export const MessageInput = ({
-  onSubmit,
+  sendMessage,
+  startConversation,
+  peerAddress,
   isDisabled,
-  conversationId,
+  conversation,
   attachment,
   setAttachment,
   attachmentPreview,
@@ -108,7 +122,7 @@ export const MessageInput = ({
     setValue("");
     setAttachmentPreview(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
+  }, [conversation]);
 
   const onButtonClick = (contentType: contentTypes) => {
     // For document view, we want to accept all file types, even if we can't gracefully render them on the UI.
@@ -151,6 +165,39 @@ export const MessageInput = ({
     status,
   });
 
+  const send = useCallback(async () => {
+    if (value || attachment) {
+      let convo = conversation;
+      if (!conversation) {
+        // TODO: see if the peer address already has a conversation
+        const { cachedConversation } = await startConversation(
+          peerAddress,
+          undefined,
+        );
+        convo = cachedConversation;
+      }
+      if (attachment && convo) {
+        void sendMessage(convo, attachment, "attachment");
+        setAttachment(undefined);
+        setAttachmentPreview(undefined);
+      }
+      if (value && convo) {
+        void sendMessage(convo, value, "text");
+        setValue("");
+        textAreaRef.current?.focus();
+      }
+    }
+  }, [
+    attachment,
+    conversation,
+    peerAddress,
+    sendMessage,
+    setAttachment,
+    setAttachmentPreview,
+    startConversation,
+    value,
+  ]);
+
   const extension = attachment?.mimeType.split("/")?.[1] || "";
 
   return (
@@ -187,17 +234,7 @@ export const MessageInput = ({
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (value || attachment) {
-                  if (attachment) {
-                    void onSubmit?.(attachment, "attachment");
-                    setAttachment(undefined);
-                    setAttachmentPreview(undefined);
-                  }
-                  if (value) {
-                    void onSubmit?.(value, "text");
-                    setValue("");
-                  }
-                }
+                void send();
               }
             }}
             ref={textAreaRef}
@@ -332,18 +369,7 @@ export const MessageInput = ({
             label={<ArrowUpIcon color="white" width="20" />}
             srText={t("aria_labels.submit_message") || ""}
             onClick={() => {
-              if (value || attachment) {
-                if (attachment) {
-                  void onSubmit?.(attachment, "attachment");
-                  setAttachment(undefined);
-                  setAttachmentPreview(undefined);
-                }
-                if (value) {
-                  void onSubmit?.(value, "text");
-                  setValue("");
-                }
-                textAreaRef.current?.focus();
-              }
+              void send();
             }}
             isDisabled={
               !(value || attachmentPreview) || isDisabled || !!attachmentError

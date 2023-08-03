@@ -5,12 +5,27 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { configureChains, createClient, WagmiConfig } from "wagmi";
 import { publicProvider } from "wagmi/providers/public";
-import { XMTPProvider } from "@xmtp/react-sdk";
+import {
+  attachmentsCacheConfig,
+  reactionsCacheConfig,
+  readReceiptsCacheConfig,
+  repliesCacheConfig,
+  XMTPProvider,
+} from "@xmtp/react-sdk";
 import { mainnet } from "wagmi/chains";
 import { infuraProvider } from "wagmi/providers/infura";
 import App from "./controllers/AppController";
 import { isAppEnvDemo } from "./helpers";
 import { mockConnector } from "./helpers/mockConnector";
+
+const DB_VERSION = 1;
+
+const cacheConfig = [
+  attachmentsCacheConfig,
+  reactionsCacheConfig,
+  readReceiptsCacheConfig,
+  repliesCacheConfig,
+];
 
 const { chains, provider, webSocketProvider } = configureChains(
   [mainnet],
@@ -44,7 +59,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
   <WagmiConfig client={isAppEnvDemo() ? wagmiDemoClient : wagmiClient}>
     <RainbowKitProvider chains={chains}>
       <StrictMode>
-        <XMTPProvider>
+        <XMTPProvider cacheConfig={cacheConfig} dbVersion={DB_VERSION}>
           <App />
         </XMTPProvider>
       </StrictMode>
