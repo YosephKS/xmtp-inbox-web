@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEnsAvatar } from "wagmi";
+import { useConversation } from "@xmtp/react-sdk";
 import { AddressInput } from "../component-library/components/AddressInput/AddressInput";
 import {
   fetchUnsName,
@@ -35,6 +36,8 @@ export const AddressInputController = () => {
     (state) => state.setRecipientInputMode,
   );
 
+  const { getCachedByPeerAddress } = useConversation();
+
   // XMTP Hooks
   const {
     recipientInputMode,
@@ -66,6 +69,18 @@ export const AddressInputController = () => {
 
     void getUns();
   }, [recipientWalletAddress]);
+
+  useEffect(() => {
+    const checkForExistingConversation = async () => {
+      if (isValidLongWalletAddress(recipientWalletAddress)) {
+        const existing = await getCachedByPeerAddress(recipientWalletAddress);
+        if (existing) {
+          setConversationTopic(existing.topic);
+        }
+      }
+    };
+    void checkForExistingConversation();
+  }, [getCachedByPeerAddress, recipientWalletAddress, setConversationTopic]);
 
   const domain = ensName ?? unsName;
 

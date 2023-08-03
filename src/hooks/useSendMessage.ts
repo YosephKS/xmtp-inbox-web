@@ -60,7 +60,7 @@ const useSendMessage = (attachment?: Attachment) => {
           contentLength: attachment.data.byteLength,
         };
 
-        await _sendMessage(conversation, remoteAttachment, {
+        void _sendMessage(conversation, remoteAttachment, {
           contentFallback:
             t("status_messaging.file_unsupported", {
               FILENAME: remoteAttachment.filename,
@@ -68,7 +68,7 @@ const useSendMessage = (attachment?: Attachment) => {
           contentType: ContentTypeRemoteAttachment,
         });
       } else if (type === "text") {
-        await _sendMessage(conversation, message);
+        void _sendMessage(conversation, message);
       }
     },
     [recipientWalletAddress, attachment, _sendMessage, t],

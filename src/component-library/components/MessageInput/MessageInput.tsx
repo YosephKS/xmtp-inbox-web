@@ -18,7 +18,11 @@ import {
 } from "@heroicons/react/outline";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "react-tooltip";
-import type { CachedConversation, useStartConversation } from "@xmtp/react-sdk";
+import {
+  useConversation,
+  type CachedConversation,
+  type useStartConversation,
+} from "@xmtp/react-sdk";
 import { IconButton } from "../IconButton/IconButton";
 import { useAttachmentChange } from "../../../hooks/useAttachmentChange";
 import { typeLookup, type contentTypes } from "../../../helpers/attachments";
@@ -83,6 +87,7 @@ export const MessageInput = ({
   setAttachmentPreview,
   setIsDragActive,
 }: InputProps) => {
+  const { getCachedByPeerAddress } = useConversation();
   const { t } = useTranslation();
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
@@ -91,6 +96,9 @@ export const MessageInput = ({
     Dispatch<SetStateAction<string | string[] | undefined>>,
   ] = useState();
   const attachmentError = useXmtpStore((state) => state.attachmentError);
+  const setConversationTopic = useXmtpStore(
+    (state) => state.setConversationTopic,
+  );
 
   const inputFile = useRef<HTMLInputElement | null>(null);
 
@@ -167,33 +175,49 @@ export const MessageInput = ({
 
   const send = useCallback(async () => {
     if (value || attachment) {
+      const val = value;
+      const attach = attachment;
+
+      setValue("");
+      setAttachment(undefined);
+      setAttachmentPreview(undefined);
+
       let convo = conversation;
       if (!conversation) {
-        // TODO: see if the peer address already has a conversation
-        const { cachedConversation } = await startConversation(
-          peerAddress,
-          undefined,
-        );
-        convo = cachedConversation;
+        // check for cached conversation with the same peer address
+        const existing = await getCachedByPeerAddress(peerAddress);
+        if (existing) {
+          convo = existing;
+        } else {
+          // create new conversation
+          const { cachedConversation } = await startConversation(
+            peerAddress,
+            undefined,
+          );
+          convo = cachedConversation;
+        }
+        // select existing or new conversation
+        if (convo) {
+          setConversationTopic(convo.topic);
+        }
       }
-      if (attachment && convo) {
-        void sendMessage(convo, attachment, "attachment");
-        setAttachment(undefined);
-        setAttachmentPreview(undefined);
+      if (attach && convo) {
+        void sendMessage(convo, attach, "attachment");
       }
-      if (value && convo) {
-        void sendMessage(convo, value, "text");
-        setValue("");
+      if (val && convo) {
+        void sendMessage(convo, val, "text");
         textAreaRef.current?.focus();
       }
     }
   }, [
     attachment,
     conversation,
+    getCachedByPeerAddress,
     peerAddress,
     sendMessage,
     setAttachment,
     setAttachmentPreview,
+    setConversationTopic,
     startConversation,
     value,
   ]);

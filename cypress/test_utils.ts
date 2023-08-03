@@ -44,7 +44,7 @@ const sendMessages = (
     checkElement("message-input").type(message, { delay: 1 });
     checkElement("message-input-submit");
     cy.get(`[data-testid=message-input-submit]`).click();
-    cy.wait(100);
+    cy.wait(500);
     cy.get(`[data-testid=conversations-list-panel]`, {
       timeout: TIMEOUT,
     }).should("have.length", 1);

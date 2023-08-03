@@ -1,4 +1,4 @@
-import { Client, useClient, useCanMessage } from "@xmtp/react-sdk";
+import { Client, useClient, useCanMessage, useDb } from "@xmtp/react-sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useConnect, useSigner } from "wagmi";
 import type { Signer } from "ethers";
@@ -102,7 +102,18 @@ const useInitXmtpClient = () => {
     }, [signer]);
 
   const { client, isLoading, initialize } = useClient();
+  const { clearDb } = useDb();
   const { canMessageStatic: canMessageUser } = useCanMessage();
+
+  useEffect(() => {
+    // clear the cache if this is an app demo
+    const checkEnv = async () => {
+      if (isAppEnvDemo()) {
+        await clearDb();
+      }
+    };
+    void checkEnv();
+  }, [clearDb]);
 
   // if this is an app demo, connect to the temporary wallet
   useEffect(() => {
